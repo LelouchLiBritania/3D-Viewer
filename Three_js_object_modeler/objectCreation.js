@@ -261,7 +261,7 @@ let pyramid = {
     ]
 }
 
-//Maisons avec erreurs
+//Maison avec erreurs
 
 let house_noised = {
     'points':[
@@ -321,6 +321,50 @@ let pyramid_noised = {
     ]
 }
 
+//Maison avec faces adjacentes coplanaires
+
+let h_underconstrained = {
+    'points':[
+        [-5, 5 ,  5],//0         0
+        [ 0, 5 ,  5],//1         0-1
+        [ 5, 5 ,  5],//2         1
+        [-5, 5 , -5],//3         2
+        [ 0, 5 , -5],//4         2-3
+        [ 5, 5 , -5],//5         3
+        [-5, 10,  5],//6         4
+        [-5, 10,  0],//7         4-6
+        [ 0, 10,  5],//8         4-5
+        [ 5, 10,  5],//9         5
+        [ 5, 10,  0],//10        5-7
+        [-5, 10, -5],//11        6
+        [ 0, 10, -5],//12        6-7
+        [ 5, 10, -5],//13        7
+        [-3, 12,  0],//14        8
+        [ 3, 12,  0] //15        9
+    ],
+    'faces':[
+        [[0,1,2,5,4,3],[]],//0
+        [[0,1,8,6],[]],//1
+        [[1,2,9,8],[]],//2
+        [[2,5,13,10,9],[]],//3
+        [[13,5,4,12],[]],//4
+        [[12,4,3,11],[]],//5
+        [[11,3,0,6,7],[]],//6
+        [[6,8,9,15,14],[]],//7
+        [[15,9,10],[]],//8
+        [[15,10,13],[]],//9
+        [[15,13,12,11,14],[]],//10
+        [[14,11,7],[]],//11
+        [[14,7,6],[]]//12
+    ]
+}
+
+let house_underconstrained = {
+    'buildingParts':[
+        h_underconstrained
+    ]
+}
+
 
 
 let mock_builds = {"Pyramid":[pyramid], 
@@ -329,6 +373,7 @@ let mock_builds = {"Pyramid":[pyramid],
                   "Houses":houses,
                   "Roof":[roof],
                   "house_noised":[houses_noised],
-                  "pyramid_noised":[pyramid_noised]
+                  "pyramid_noised":[pyramid_noised],
+                  "house_underconstrained":[house_underconstrained]
                 };
 export {mock_builds}

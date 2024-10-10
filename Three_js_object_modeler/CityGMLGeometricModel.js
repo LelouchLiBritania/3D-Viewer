@@ -219,6 +219,10 @@ class LinearRing{
         return Mr;
     }
 
+    reverse(){
+        this.positions.reverse();
+    }
+
 }
 
 class Surface{
@@ -249,7 +253,8 @@ class Polygon extends Surface{
         else{
             throw new Error("Polygon not valid");
         }
-        
+        /*console.log(this.id+" ["+this.planeEquation[0].toString()+","+this.planeEquation[1].toString()+","
+        +this.planeEquation[2].toString()+","+this.planeEquation[3].toString()+"]");*/
     }
     checkValidity(){
         
@@ -390,6 +395,13 @@ class Polygon extends Surface{
             point = this.interior.find(id_point);
         }
         return point;
+    }
+
+    reverse(){
+        this.exterior.reverse();
+        this.interiors.forEach(int=>{
+            this.interiors.reverse();
+        })
     }
 
 

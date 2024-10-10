@@ -62,6 +62,22 @@ class GeometryBuilder{
                 let n_ext_he = polygon.exterior.size;
                 let nb_he = this.halfedge_data.pIndex.length;
                 this.face_data.hExtIndex[polygon.id-minFaceId] = [nb_he];
+
+                for(let i=0; i<n_ext_he; i++){
+                    let point3Do = polygon.exterior.positions[i];
+                    let origin = point3Do.id-minPointId;
+                    let point3Dt = polygon.exterior.positions[(i+1)%n_ext_he];
+                    let target = point3Dt.id-minPointId;
+                    for(let j=0; j<this.halfedge_data.pIndex.length; j++){
+                        let origin2 = this.halfedge_data.pIndex[j];
+                        let target2 = this.halfedge_data.pIndex[this.halfedge_data.nextIndex[j]];
+                        if (origin2==origin && target2==target){
+                            polygon.reverse();
+                            break;
+                        }
+                    }
+                }
+
                 for(let i=0; i<n_ext_he; i++){
                     let point3D = polygon.exterior.positions[i];
                     let origin = point3D.id-minPointId;
