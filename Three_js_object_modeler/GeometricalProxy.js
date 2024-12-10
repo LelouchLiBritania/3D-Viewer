@@ -1,11 +1,14 @@
+import { DataUtils } from "three";
+
 class PointData{
-    constructor(points3D, heIndex, nbAdjacentFaces){
+    constructor(points3D, heIndex, nbAdjacentFaces,supportPlanEquation=new Array(points3D.length)){
         //topological model
         this.coords  = points3D;
         this.heIndex = heIndex;
         this.count   = points3D.length;
 
         this.embeddedPlanEquation = new Array(this.count);
+        this.supportPlanEquation = supportPlanEquation;
 
         //grapphical embedding
         this.nbAdjacentFaces = nbAdjacentFaces;
@@ -14,10 +17,11 @@ class PointData{
 
 
     }
-    add(he_id, embeddedPlanEquation=[NaN, NaN, NaN, NaN]){
+    add(he_id, embeddedPlanEquation=[NaN, NaN, NaN, NaN],supportPlanEquation){
         this.coords.push([0,0,0]);
         this.heIndex.push([he_id]);
         this.embeddedPlanEquation.push(embeddedPlanEquation);
+        this.supportPlanEquation.push(supportPlanEquation);
         this.nbAdjacentFaces.push(-1);
         this.count+=1;
     }
@@ -26,6 +30,7 @@ class PointData{
         this.heIndex.splice(p_id, 1);
         this.nbAdjacentFaces.splice(p_id, 1);
         this.embeddedPlanEquation.splice(p_id,1);
+        this.supportPlanEquation.splice(p_id,1);
         this.count-=1;
     }
 
@@ -56,7 +61,14 @@ class PointData{
         this.heIndex.forEach(c=>{
             heIndex.push([...c]);
         })
-        let copy = new PointData(coords, heIndex, [...this.nbAdjacentFaces]);
+        let copySupport = new Array(this.count);
+        for (let i=0; i<this.count; i++){
+            if(this.supportPlanEquation[i]){
+                copySupport[i]=[...this.supportPlanEquation[i]]
+            }
+        }
+          
+        let copy = new PointData(coords, heIndex, [...this.nbAdjacentFaces], copySupport);
         for (let i=0; i<this.count; i++){
             copy.embeddedPlanEquation[i]=[...this.embeddedPlanEquation[i]]
         }
@@ -155,12 +167,13 @@ class HalfEdgeData{
 }
 
 class EdgeData{
-    constructor(heIndex){
+    constructor(heIndex, supportPlanEquation= new Array(heIndex.length)){
         this.heIndex = heIndex;
         this.count = this.heIndex.length;
         this.selectedEdge = -1;
         this.embeddedPlanEquation = new Array(this.count);
         this.flipable = new Array(this.count).fill(false);
+        this.supportPlanEquation = supportPlanEquation;
     }
     changeSelectedEdge(newEdgeIndex, material){
         this.selectedEdge = newEdgeIndex;
@@ -170,6 +183,7 @@ class EdgeData{
     add(he_id, embeddedPlanEquation=[NaN, NaN, NaN, NaN]){
         this.heIndex.push(he_id);
         this.embeddedPlanEquation.push(embeddedPlanEquation);
+        this.supportPlanEquation.push(null);
         this.flipable.push(false);
         this.count+=1;
     }
@@ -182,7 +196,12 @@ class EdgeData{
     copy(){
         let copy = new EdgeData([...this.heIndex]);
         for (let i=0; i<this.count; i++){
-            copy.embeddedPlanEquation[i]=[...this.embeddedPlanEquation[i]]
+            copy.embeddedPlanEquation[i]=[...this.embeddedPlanEquation[i]];
+        }
+        for (let i=0; i<this.count; i++){
+            if(this.supportPlanEquation[i]){
+                copy.supportPlanEquation[i]=[...this.supportPlanEquation[i]];
+            }
         }
         return copy;
     }

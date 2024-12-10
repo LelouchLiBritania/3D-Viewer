@@ -38,6 +38,7 @@ const w = window;
     document.body.appendChild( renderer.domElement );
 
 
+    let doLabelRebdering = false;
     const labelRenderer = new CSS2DRenderer();
     labelRenderer.setSize( window.innerWidth*screen_split_ratio, window.innerHeight );
     
@@ -179,7 +180,9 @@ const w = window;
         render();
 
         renderer.render( scene, camera );
-        labelRenderer.render(scene, camera);
+        if(doLabelRebdering){
+            labelRenderer.render(scene, camera);
+        }
         dualRenderer.render( dualScene, dualCamera );
     }
     animate();
@@ -300,15 +303,24 @@ const w = window;
         dualMaterial.uniforms.wireframe.value = e.target.checked;
     }
     
-    let debug_material_switch = document.getElementById("debug_material_switch");
-    debug_material_switch.onchange = function(e){
+    let label_switch = document.getElementById("label_switch");
+    label_switch.onchange = function(e){
+        doLabelRebdering = e.target.checked;
         if(e.target.checked){
-            material = material_debug;
+            controllers.getSelectedController().onChange();
+            //scene.add(controllers.getSelectedController().labelData);
         }
         else{
-            material = material_building;
+            while(controllers.getSelectedController().labelData.children.length!=0){
+                let child = controllers.getSelectedController().labelData.children[0];
+                controllers.getSelectedController().labelData.remove(child);
+            }
         }
-        controllers.changeMaterial(material);
+        
+
+        
+        labelRenderer.render(scene, camera);
+        
     }
 
 

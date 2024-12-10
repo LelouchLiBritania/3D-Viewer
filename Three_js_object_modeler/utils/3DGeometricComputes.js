@@ -73,24 +73,22 @@ function computeIntersectionPoint(plan1,plan2,plan3){
     let [a2,b2,c2,d2] = plan2;
     let [a3,b3,c3,d3] = plan3;
 
-    let A = matrix([[a1.toNumber(),b1.toNumber(),c1.toNumber()],
-                    [a2.toNumber(),b2.toNumber(),c2.toNumber()],
-                    [a3.toNumber(),b3.toNumber(),c3.toNumber()]]);
+    let A = new ExactMatrix([[a1,b1,c1],
+                    [a2,b2,c2],
+                    [a3,b3,c3]]);
 
-
+    //A.print();
     //console.log(A.det());
-    if(Math.abs((A.det()))==0){
+    if(A.det().isZero()){
         return [NaN,NaN,NaN];
     }
 
-    let D = matrix([[d1.neg().toNumber()],
-                    [d2.neg().toNumber()],
-                    [d3.neg().toNumber()]]);
+    let D = new ExactMatrix([[d1.neg()],
+                    [d2.neg()],
+                    [d3.neg()]]);
 
-    let p = matrix(A.inv()).prod(D);
-    p = matrix(p).trans()[0];
-
-    return p;
+    let p = A.inv().prod(D);
+    return [p[0][0].toNumber(),p[1][0].toNumber(),p[2][0].toNumber()];
 }
 
 /**
@@ -380,89 +378,25 @@ function computeIntersectionPoint2(...plans){
     if(plans.length<3){
         console.error("Underconstrained plan")
     }
-    else if(plans.length==3){
-        let [a1,b1,c1,d1] = plans[0];
-        let [a2,b2,c2,d2] = plans[1];
-        let [a3,b3,c3,d3] = plans[2];
-
-        let A = matrix([[a1,b1,c1],
-            [a2,b2,c2],
-            [a3,b3,c3]]);
-
-        
-        /*console.log(plans[0], plans[1], plans[2]);
-        console.log(A(),A.det());*/
-
-
-        //console.log(A.det());
-        if(Math.abs((A.det()))<=0.01){
-            return [NaN,NaN,NaN];
-        }
-
-        let D = matrix([[-d1],
-                    [-d2],
-                    [-d3]]);
-
-        let p = matrix(A.inv()).prod(D);
-        p = matrix(p).trans()[0];
-
-        return p;
-    }
     else{
     ////Algorithme du pivot de gauss
-        let A = [];
-        let D = [];
+        let A_values = [];
+        let D_values = [];
         //Initilisation du système d'équations
         plans.forEach(plan=>{
-            A.push(plan.slice(0,3));
-            D.push([plan[3]]);
+            A_values.push(plan.slice(0,3));
+            D_values.push([plan[3]]);
         })
 
-        //On a besoin de faire seulement 3 tours, car on est en 3 dimensions
+        let A = new ExactMatrix(A_values);
+        let D = new ExactMatrix(D_values);
 
-        //On réorganise les plans
-        let new_A_D = reorganize(A,D,0);
-        A = new_A_D[0];
-        D = new_A_D[1];
-
-        //on peut appliquer l'algorithme du pivot de gauss
-        for(let i=0; i<3; i++){
-            let a_i=A[i][i];
-            if(a_i!=0){
-                for(let j=i+1; j<plans.length; j++){
-                    let a_j = A[j][i];
-                    let c = a_j/a_i;
-                    for(let k=i;k<3;k++){
-                        A[j][k] -= A[i][k]*c;
-                    }
-                    D[j] -= D[i]*c;
-                }
-            }
-            //On re-vérifie à chaque fois que la prochaine étape n'aura pas
-            //un coef de référence valant 0
-            [A,D] = reorganize(A,D,i+1);
-            
-        }
-
-        let success = true;
-        for(let i=3; i<plans.length; i++){
-            success = D[i]<=0.0001;
-            if(!success){
-                break;
-            }
-        }
+        let res = A.solve(D);
 
         //console.log(A, D);
 
-        if(success){
-            let plan1 = A[0];
-            plan1.push(D[0]);
-            let plan2 = A[1];
-            plan2.push(D[1]);
-            let plan3 = A[2];
-            plan3.push(D[2]);
-
-            return computeIntersectionPoint2(plan1, plan2, plan3);
+        if(res.l!=0){
+            return([res[0][0].neg().toNumber(),res[1][0].neg().toNumber(),res[2][0].neg().toNumber()]);
         }
         else{
             return [NaN,NaN,NaN];

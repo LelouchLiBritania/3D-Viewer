@@ -61,6 +61,11 @@ class Controller{
                 this.labelBuilder.build(this, this.material);
 
                 this.labelData = this.labelBuilder.getLabel();
+                if(!this.isCopy){
+                    for(let i=0; i<this.faceData.count; i++){
+                        this.printFace(i);
+                    }
+                }
 
             }
             
@@ -167,7 +172,50 @@ class Controller{
         let faceDeleted = [];
         
         while(!(delta.isZero()&&!(this.leftEvent&&this.leftEvent.t.isZero())&&!(this.rightEvent&&this.rightEvent.t.isZero()))){
+            
+            
+            //split underconstrained edges into faces (using support plans)
+            let splitFace_newEdges = [];
+            let e_count_init = this.edgeData.count;
+            console.log("=".repeat(15));
+            console.log("=".repeat(5),"SPLIT EDGES","=".repeat(5));
+            let h_e = this.faceData.hExtIndex[faceId];
+            let h=h_e;
+            do{
+                let e_id = this.halfEdgeData.eIndex[h];
+                if(this.edgeData.supportPlanEquation[e_id]){
+                    //create a new face using the support plan
+                    this.edgeData.embeddedPlanEquation[e_id] = this.edgeData.supportPlanEquation[e_id];
+                    this.splitCellIntoFace(e_id,1);
+                    h_e = this.faceData.hExtIndex[faceId];
+                    h = h_e;
+                }
+                h=this.halfEdgeData.next(h);
+            }while(h!=h_e)
+
+            for(let i=0; i<this.faceData.hIntIndices[faceId].length; i++){
+                let h_e = this.faceData.hIntIndices[faceId][i];
+                let h=h_e;
+                do{
+                    let e_id = this.halfEdgeData.eIndex[h];
+                    if(this.edgeData.supportPlanEquation[e_id]){
+                        //create a new face using the support plan
+                        this.edgeData.embeddedPlanEquation[e_id] = this.edgeData.supportPlanEquation[e_id];
+                        this.splitCellIntoFace(e_id,1);
+                        h_e = this.faceData.hIntIndices[faceId][i];
+                        h = h_e;
+                    }
+                    h=this.halfEdgeData.next(h);
+                }while(h!=h_e)
+            }
+
+            for(let i=e_count_init-1; i<this.edgeData.count; i++){
+                splitFace_newEdges.push({p_id:-1, e_id:i});
+            }
+
             //split points
+            console.log("=".repeat(15));
+            console.log("=".repeat(5),"SPLIT POINTS","=".repeat(5));
             let pointsToSplit = [];
             let splittable = true;
             for(let i=0; i<this.pointData.count; i++){
@@ -195,13 +243,18 @@ class Controller{
             else{
                 break;
             }
+
+            
+
             
             
             //move to next event
             //console.log(pointsToSplit);
+            console.log("=".repeat(15));
+            console.log("=".repeat(5),"FIRST MOVE","=".repeat(5));
             let encounteredEvent;
             
-            this.findTValidityInterval(faceId, pointsToSplit);
+            this.findTValidityInterval(faceId, pointsToSplit.concat(splitFace_newEdges));
             //console.log(this.leftEvent, this.rightEvent);
             let delta_final = delta;
             
@@ -230,9 +283,9 @@ class Controller{
                 this.resetExactNumbersTree(faceId);
             }
 
-            
-            
+            console.log("DELTA = ", delta_final.toNumber());
 
+            
 
             //console.log(delta.toNumber(), delta_final.toNumber(), delta.sub(delta_final).toNumber());
             delta = delta.sub(delta_final);
@@ -240,6 +293,8 @@ class Controller{
 
             //degenerate faces
             do{
+                console.log("=".repeat(15));
+                console.log("=".repeat(5),"OTHER MOVES","=".repeat(5));
                 //degenerate edges
                 if(encounteredEvent){
                     if(encounteredEvent.type=="Edge degeneration"){
@@ -250,18 +305,18 @@ class Controller{
                     }
                     this.labelBuilder.update(this,this.material);
                     this.labelData = this.labelBuilder.getLabel();
-                    /*for(let i=0; i<this.faceData.count; i++){
+                    for(let i=0; i<this.faceData.count; i++){
                         this.printFace(i);
-                    }*/
+                    }
                 }
                 
                 let faceDegenerations = this.detectFaceDegenerations(faceId);
                 faceDegenerations.forEach(event=>{
                     this.degenerateFace(event.degeneratedCell);
                     faceDeleted.push(event.degeneratedCell);
-                    /*for(let i=0; i<this.faceData.count; i++){
+                    for(let i=0; i<this.faceData.count; i++){
                         this.printFace(i);
-                    }*/
+                    }
                     this.labelBuilder.update(this,this.material);
                     this.labelData = this.labelBuilder.getLabel();
                 })
@@ -285,6 +340,9 @@ class Controller{
                 break;
             }
             
+        }
+        for(let i=0; i<this.faceData.count; i++){
+            this.printFace(i);
         }
         this.stop = false;
         /*for(let i=0; i<this.faceData.count; i++){
@@ -391,14 +449,56 @@ class Controller{
     computeCoords(point_id){
         let faces = this.findAdjacentFaces(point_id);
         let plans = [];
+        if(this.pointData.supportPlanEquation[point_id]){
+            plans.push([...this.pointData.supportPlanEquation[point_id]]);
+        }
         faces.forEach(f=>{
             plans.push([...this.faceData.planeEquation[f]]);
         });
+
+
+        let he = this.pointData.heIndex[point_id];
+        let h = he;
+
+        do{
+            let e_id = this.halfEdgeData.eIndex[h];
+            if(this.edgeData.supportPlanEquation[e_id]){
+                plans.push(this.edgeData.supportPlanEquation[e_id]);
+            }
+            h=this.halfEdgeData.next(this.halfEdgeData.opposite(h));
+        }while(h!=he)
+
+        
+        
         let p=[0,0,0];
         //plans.push(this.pointData.embeddedPlanEquation[point_id]);
-        if(plans.length>=3) {
-            p = GeomUtils.computeIntersectionPoint(...plans);
+        p = GeomUtils.computeIntersectionPoint2(...plans);
+        
+        if(isNaN(p[0])){
+            if(!this.isDual){
+                let plans_f = [];
+                plans.forEach(pl=>{
+                    plans_f.push([pl[0].toNumber(),pl[1].toNumber(),pl[2].toNumber(),pl[3].toNumber()]);
+                })
+
+                let supportPlans=[];
+                do{
+                    let e_id = this.halfEdgeData.eIndex[h];
+                    //console.log("      ",e_id, this.edgeData.supportPlanEquation[e_id])
+                    if(this.edgeData.supportPlanEquation[e_id]){
+                        plans.push(this.edgeData.supportPlanEquation[e_id]);
+                        supportPlans.push(this.edgeData.supportPlanEquation[e_id]);
+                    }
+                    h=this.halfEdgeData.next(this.halfEdgeData.opposite(h));
+                }while(h!=he)
+                let M = new ExactMatrix(plans);
+                
+                
+                //console.log(point_id,faces , plans_f, supportPlans, M.rank(), this.isCopy);
+                //this.printVertex(point_id);
+            }
         }
+        
         
         
         /*try{
@@ -486,6 +586,43 @@ class Controller{
         
     }
 
+    updateSupportPlans(){
+        for(let i=0; i<this.edgeData.heIndex.length; i++){
+            let h1 = this.edgeData.heIndex[i];
+            let h2 = this.halfEdgeData.oppIndex[h1];
+
+            let v1 = this.halfEdgeData.pIndex[h1];
+            let v2 = this.halfEdgeData.pIndex[h2];
+
+            let faces1 = this.findAdjacentFaces(v1);
+            let faces2 = this.findAdjacentFaces(v2);
+
+            let faces = Utils.getCommonElts(faces1, faces2);
+
+            let values = [];
+
+            let eq1 = this.faceData.planeEquation[faces[0]];
+            let eq2 = this.faceData.planeEquation[faces[1]];
+            values.push([...eq1]);
+            values.push([...eq2]);
+            
+            let M = new ExactMatrix(values);
+            if(M.rank()<2){
+                let [a,b,c,d]=[...eq1];
+                let n = [a,b,c];
+                let p1 = this.pointData.coords[v1];
+                let p2 = this.pointData.coords[v2];
+                let v = [p2[0].sub(p1[0]),p2[1].sub(p1[1]),p2[2].sub(p1[2])];
+                let n_support = Utils.normalize(Utils.crossProduct(n,v));
+                let d_support = Utils.dotProduct(n_support, p1).neg();
+                this.edgeData.supportPlanEquation[i]=[...n_support, d_support];
+            }
+            else{
+                this.edgeData.supportPlanEquation[i]=null;
+            }
+        }
+    }
+
     updateEmbeddedPlans(){
         for(let i=0; i<this.pointData.count; i++){
             if(typeof(this.pointData.embeddedPlanEquation[i][0])=="number"){
@@ -493,6 +630,7 @@ class Controller{
             }
             let [x,y,z] = this.computeCoords(i);
             let [a,b,c,d] = this.pointData.embeddedPlanEquation[i];
+            //console.log(i,x,y,z);
             this.pointData.embeddedPlanEquation[i][3] = a.neg().mul(N(String(x))).sub(b.mul(N(String(y)))).sub(c.mul(N(String(z))));
         }
 
@@ -617,18 +755,18 @@ class Controller{
                             ,this.faceData.planeEquation[faces[1]], this.faceData.planeEquation[faces[2]], true
                         );
                         console.log(i,faces,t_lim,t_limf,"=0");*/
-                        console.log(i, t_limf, "=0");
+                        //console.log(i, t_limf, "=0");
                         this.rightEvent = new TopologicalEvent(fIndex, N(0), "Edge degeneration", i);
                         this.leftEvent = new TopologicalEvent(fIndex, N(0), "Edge degeneration", i);
                     }
                     else if(t_lim.sign()==1&&!t_lim.isZero()){
-                        console.log(i, t_limf, ">0");
+                        //console.log(i, t_limf, ">0");
                         if((!this.rightEvent)||ExactMathUtils.lt(t_lim,this.rightEvent.t)){
                             this.rightEvent = new TopologicalEvent(fIndex, t_lim, "Edge degeneration", i);
                         }
                     }
                     else if(t_lim.sign()==-1&&!t_lim.isZero()){
-                        console.log(i, t_limf, "<0");
+                        //console.log(i, t_limf, "<0");
                         if((!this.leftEvent)||ExactMathUtils.gt(t_lim,this.leftEvent.t)){
                             this.leftEvent = new TopologicalEvent(fIndex, t_lim, "Edge degeneration", i);
                         }
@@ -724,7 +862,7 @@ class Controller{
         }
         this.deleteHalfEdge(h_n);
         
-        
+        this.updateSupportPlans();
 
     }
 
@@ -794,6 +932,9 @@ class Controller{
         this.deletePoint(p2);
 
         this.pointData.embeddedPlanEquation[p1] = planEquation;
+
+        this.updateEmbeddedPlans();
+        this.updateSupportPlans();
     }
 
 
@@ -812,6 +953,8 @@ class Controller{
             this.splitPoint_changeGeomModel(p_id, face_id, strat); 
         }
         //console.log("end");
+        this.updateEmbeddedPlans();
+        this.updateSupportPlans();
         return strat;
     }
 
@@ -1070,7 +1213,7 @@ class Controller{
     }
 
 
-    splitCellIntoFace(cellId, cellType){
+    splitCellIntoFace(cellId, cellType, planEquation=null){
         let cell_name = "";
         if(cellType==0){
             cell_name = "point";
@@ -1161,6 +1304,44 @@ class Controller{
 
 
         if(cellType==1){
+            let edgeId = cellId;
+            let planEquation = this.edgeData.embeddedPlanEquation[edgeId];
+            let h  = this.edgeData.heIndex[edgeId];
+            let ho = this.halfEdgeData.opposite(h);
+
+            let p0 = this.halfEdgeData.vertex(h);
+            let p1 = this.halfEdgeData.vertex(ho);
+
+            
+
+            //Création of the new elements
+
+            let new_e_id = this.edgeData.count;
+            let newFace_id = this.faceData.count;
+
+            let h1_id = this.halfEdgeData.count;
+            let h2_id = h1_id+1;
+            
+            this.halfEdgeData.add(p1, h, h2_id, newFace_id, edgeId);//creation of h1
+            this.halfEdgeData.add(p0, ho, h1_id, newFace_id, new_e_id);//creation of h2
+            this.edgeData.add(new_e_id);
+            this.faceData.add(h1_id,[],planEquation);
+
+
+            //update
+            this.halfEdgeData.opposite[h] = h1_id;
+            this.halfEdgeData.opposite[ho] = h2_id;
+            this.halfEdgeData.eIndex[h2] = new_e_id;
+
+            this.printFace(newFace_id);
+
+        }
+
+
+
+
+        //bis edge 
+        /*if(cellType==1){
             let edgeId = cellId;
             let planEquation = this.edgeData.embeddedPlanEquation[edgeId];
             let h  = this.edgeData.heIndex[edgeId];
@@ -1322,6 +1503,12 @@ class Controller{
                 i++;
             }while(he!=h_opo)
 
+
+
+
+
+            
+
             //change h and ho opposites
             this.halfEdgeData.oppIndex[h]  = halfEdges1[2];
             this.halfEdgeData.oppIndex[ho] = halfEdges0[2];
@@ -1335,11 +1522,15 @@ class Controller{
 
             //Creation of the face
             this.faceData.add([halfEdges0[0]],[],planEquation);
+            this.printFace(newFace_id);
 
 
-        }
+        }*/
+
+
 
         this.updateEmbeddedPlans();
+        this.updateSupportPlans();
 
     }
 

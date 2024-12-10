@@ -274,7 +274,7 @@ class ExactMatrix{
         }
 
 
-        for(let j=0; j<Math.min(this.l, this.h); j++){
+        for(let j=0; j<this.l; j++){
             let k = this.__findMaxAbsoluteValueOnColumn__(j, r+1, values_copy);
             let a_kj = values_copy[k][j];
             if(!a_kj.isZero()){
@@ -295,7 +295,11 @@ class ExactMatrix{
                     }
                 }
             }
+            if(r>=(Math.min(this.l, this.h)-1)){
+                break;
+            }
             if(p){
+                console.log(r);
                 let m = new ExactMatrix(values_copy);
                 m.print();
             }
@@ -311,7 +315,73 @@ class ExactMatrix{
         return r+1;
     }
 
+
+
+
+    /**
+     * Computes the rank of the matrix using the Gauss Jordan algorithm.
+     */
+    solve(D, p=false){
+        let r=-1;
+        let values_copy = [];
+        for (let i=0; i<this.h; i++){
+            values_copy.push([...this.values[i]]);
+        }
+
+
+        for(let j=0; j<Math.min(this.l, this.h); j++){
+            if(D.h!=this.h||D.l!=1){
+                console.error("Wrong parameters size.");
+            }
+            let k = this.__findMaxAbsoluteValueOnColumn__(j, r+1, values_copy);
+            let a_kj = values_copy[k][j];
+            if(!a_kj.isZero()){
+                r=r+1;
+                for(let l=j; l<this.l; l++){
+                    values_copy[k][l] = values_copy[k][l].div(a_kj);
+                }
+                D[k][0] = D[k][0].div(a_kj);
+                if(k!=r){
+                    this.__swapLines__(k,r,values_copy);
+                    this.__swapLines__(k,r,D.values);
+                }
+                for(let i=0; i<this.h; i++){
+                    if(i!=r){
+                        let a_ij = values_copy[i][j];
+                        for(let l=j+1; l<this.l; l++){
+                            values_copy[i][l] = values_copy[i][l].sub(a_ij.mul(values_copy[r][l]));
+                        }
+                        values_copy[i][j] = N(0);
+                        D[i][0] = D[i][0].sub(a_ij.mul(D[r][0]));
+                    }
+                }
+            }
+            if(p){
+                let m = new ExactMatrix(values_copy);
+                m.print();
+                D.print();
+            }
+        }
+        if(p){
+            console.log("[][][][][][]");
+            let m = new ExactMatrix(values_copy);
+            console.log(r+1);
+            this.print();
+            m.print();
+            D.print();
+            console.log("[][][][][][]");
+        }
+        if(r+1>=3){
+            return D;
+        }
+        else{
+            return new ExactMatrix([[]]);
+        }
+        
+    }
+
     __findMaxAbsoluteValueOnColumn__(j, i_min, values){
+        //console.log(i_min, j, values[i_min]);
         let v=values[i_min][j].abs();
         let id_max = i_min;
         for(let i=i_min+1; i<this.h; i++){
