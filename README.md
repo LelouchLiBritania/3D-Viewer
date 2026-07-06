@@ -1,6 +1,6 @@
 # Semi-automatic polyhedral modeler
 
-This polyhedral modeler is based on the face shift and edge flip tools.
+This polyhedral modeler is based on the face shift and edge flip tools. It is the implementation of the work presented in this [Ph.D. thesis](https://theses.fr/s358836).
 
 ## Install
 
